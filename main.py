@@ -1,12 +1,20 @@
 from flask import Flask
 from threading import Thread
 import telebot
+import os
 from telebot import types
 
 
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 bot = telebot.TeleBot(TOKEN)
 app = Flask('')
+
+
+
+if __name__ == "__main__":
+   bot.infinity_polling()
+
+
 
 user_gender = {}
 user_age = {}
