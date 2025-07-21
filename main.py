@@ -188,6 +188,15 @@ def keep_alive():
     t.start()
 
 keep_alive()
+
+bot.set_my_commands([
+    telebot.types.BotCommand("start", "Начать"),
+    telebot.types.BotCommand("search", "Найти собеседника"),
+    telebot.types.BotCommand("next", "Следующий собеседник"),
+    telebot.types.BotCommand("stop", "Остановить диалог"),
+    telebot.types.BotCommand("settings", "Поменять настройки"),
+])
+
 bot.polling(none_stop=True)
 
 
