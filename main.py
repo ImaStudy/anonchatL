@@ -10,11 +10,6 @@ app = Flask('')
 
 
 
-if __name__ == "__main__":
-   bot.infinity_polling()
-
-
-
 user_gender = {}
 user_age = {}
 waiting_for_gender_change = set()
