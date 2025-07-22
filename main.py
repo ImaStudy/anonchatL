@@ -175,4 +175,5 @@ def handle_chat(message):
 if __name__ == '__main__':
     Thread(target=run_flask).start()
     bot.remove_webhook()
+    time.sleep(10)
     bot.polling(none_stop=True)
