@@ -2,6 +2,7 @@ from flask import Flask
 from threading import Thread
 import telebot
 from telebot import types
+import time
 
 # === Основные настройки ===
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
