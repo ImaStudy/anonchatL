@@ -174,5 +174,6 @@ def handle_chat(message):
 # === Запуск ===
 if __name__ == '__main__':
     Thread(target=run_flask).start()
-    bot.remove_webhook()  # Снимаем webhook, чтобы не было конфликта
+    bot.remove_webhook()
+    time.sleep(10)
     bot.polling(none_stop=True)
