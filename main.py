@@ -1,15 +1,12 @@
-from flask import Flask, request
+from flask import Flask
+from threading import Thread
 import telebot
 from telebot import types
-import os
 
 # === Основные настройки ===
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
-WEBHOOK_HOST = 'https://anonchatbot-jbh9.onrender.com'
-WEBHOOK_PATH = f"/{TOKEN}"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 # === Глобальные переменные ===
 user_gender = {}
@@ -19,17 +16,15 @@ users_waiting = []
 active_chats = {}
 shown_welcome = set()
 
-# === Flask маршруты ===
-@app.route('/', methods=['GET'])
+# === Flask-маршрут для UptimeRobot ===
+@app.route('/')
 def index():
-    return "✅ Бот запущен и работает!"
+    return "✅ Бот работает и не спит!"
 
-@app.route(WEBHOOK_PATH, methods=['POST'])
-def webhook():
-    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
-    bot.process_new_updates([update])
-    return '', 200
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
 
+# === Бот-обработчики ===
 @bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
 def send_welcome(msg):
     shown_welcome.add(msg.chat.id)
@@ -176,10 +171,7 @@ def handle_chat(message):
     elif chat_id not in shown_welcome:
         send_welcome(message)
 
+# === Запуск ===
 if __name__ == '__main__':
-    # Устанавливаем Webhook перед запуском сервера
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    Thread(target=run_flask).start()
+    bot.polling(none_stop=True)
