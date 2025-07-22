@@ -1,5 +1,4 @@
-from flask import Flask
-from threading import Thread
+from flask import Flask, request
 import telebot
 from telebot import types
 import os
@@ -8,6 +7,10 @@ TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
+WEBHOOK_HOST = 'https://anonchatbot-jbh9.onrender.com'  # замени на свой Render URL, если другой
+WEBHOOK_PATH = f"/{TOKEN}"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+
 user_gender = {}
 user_age = {}
 waiting_for_gender_change = set()
@@ -15,9 +18,16 @@ users_waiting = []
 active_chats = {}
 shown_welcome = set()
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def home():
-    return "Бот работает!"
+    return 'Бот работает!'
+
+@app.route(WEBHOOK_PATH, methods=['POST'])
+def webhook():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return '', 200
 
 @bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
 def send_welcome(msg):
@@ -165,20 +175,10 @@ def handle_chat(message):
     elif chat_id not in shown_welcome:
         send_welcome(message)
 
-def run():
+if __name__ == '__main__':
+    # Устанавливаем Webhook перед запуском сервера
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
+
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
-
-def run_bot():
-    bot.set_my_commands([
-        telebot.types.BotCommand("start", "Начать"),
-        telebot.types.BotCommand("search", "Найти собеседника"),
-        telebot.types.BotCommand("next", "Следующий собеседник"),
-        telebot.types.BotCommand("stop", "Остановить диалог"),
-        telebot.types.BotCommand("settings", "Поменять настройки"),
-    ])
-    bot.polling(non_stop=True)
-
-if __name__ == '__main__':
-    Thread(target=run).start()
-    Thread(target=run_bot).start()
