@@ -193,5 +193,6 @@ def start_bot():
 if __name__ == '__main__':
     flask_thread = Thread(target=run_flask)
     flask_thread.start()
-    start_bot()
 
+    polling_thread = Thread(target=start_bot)
+    polling_thread.start()
