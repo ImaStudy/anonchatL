@@ -180,7 +180,13 @@ def start_bot():
     logging.info("Удаляем webhook и запускаем polling")
     bot.remove_webhook()
     time.sleep(5)
-    bot.infinity_polling(timeout=60, long_polling_timeout=30)
+    while True:
+        try:
+            bot.infinity_polling(timeout=60, long_polling_timeout=30)
+        except Exception as e:
+            logging.error(f"Polling error: {e}", exc_info=True)
+            time.sleep(10)  # Подождать перед повторным запуском
+
 
 if __name__ == '__main__':
     Thread(target=start_bot).start()
