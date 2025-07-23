@@ -174,5 +174,6 @@ def handle_chat(message):
 
 # === Запуск ===
 if __name__ == '__main__':
+    time.sleep(10)
    Thread(target=bot.infinity_polling).start()
 run_flask()
