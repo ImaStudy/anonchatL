@@ -2,6 +2,9 @@ from flask import Flask
 from threading import Thread
 import telebot
 from telebot import types
+import time
+
+logging.basicConfig(level=logging.INFO)
 
 # === Основные настройки ===
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
@@ -173,7 +176,9 @@ def handle_chat(message):
 
 # === Запуск ===
 def start_bot():
+    logging.info("Удаляем webhook и запускаем polling")
     bot.remove_webhook()
+    time.sleep(10)
     bot.infinity_polling(timeout=60, long_polling_timeout=30)
 
 if __name__ == '__main__':
