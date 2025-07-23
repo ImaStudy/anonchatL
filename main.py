@@ -179,13 +179,14 @@ def handle_chat(message):
 
 # === Запуск ===
 def start_bot():
-    print("Polling запускается!")   # <<< это точно видно
+    print("Polling запускается!")
     logging.info("Запуск бота с polling")
     logging.info("Polling запущен")
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
         except Exception as e:
+            print(f"Polling error: {e}")  # обязательно вывести в консоль
             logging.error(f"Polling error: {e}", exc_info=True)
             time.sleep(10)
 
