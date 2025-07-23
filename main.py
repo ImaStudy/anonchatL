@@ -2,7 +2,6 @@ from flask import Flask
 from threading import Thread
 import telebot
 from telebot import types
-import time
 
 # === Основные настройки ===
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
@@ -173,7 +172,10 @@ def handle_chat(message):
         send_welcome(message)
 
 # === Запуск ===
+def start_bot():
+    bot.infinity_polling(timeout=60, long_polling_timeout=30)
+
 if __name__ == '__main__':
-    time.sleep(10)
-   Thread(target=bot.infinity_polling).start()
-run_flask()
+    Thread(target=start_bot).start()
+    run_flask()
+
