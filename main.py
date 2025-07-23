@@ -190,5 +190,6 @@ def start_bot():
             time.sleep(10)
 
 if __name__ == '__main__':
-    Thread(target=start_bot).start()
-    run_flask()
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+    start_bot()
