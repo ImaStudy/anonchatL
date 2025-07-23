@@ -3,6 +3,7 @@ from threading import Thread
 import telebot
 from telebot import types
 import time
+import logging
 
 logging.basicConfig(level=logging.INFO)
 
