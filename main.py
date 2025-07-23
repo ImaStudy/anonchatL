@@ -179,6 +179,7 @@ def handle_chat(message):
 
 # === Запуск ===
 def start_bot():
+    print("Polling запускается!")   # <<< это точно видно
     logging.info("Запуск бота с polling")
     logging.info("Polling запущен")
     while True:
@@ -187,7 +188,6 @@ def start_bot():
         except Exception as e:
             logging.error(f"Polling error: {e}", exc_info=True)
             time.sleep(10)
-
 
 if __name__ == '__main__':
     Thread(target=start_bot).start()
