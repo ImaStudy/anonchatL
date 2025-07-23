@@ -9,8 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 
-# Удаляем webhook сразу после импорта telebot и до создания объекта bot
-telebot.apihelper.delete_webhook(TOKEN)
+bot.remove_webhook()
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
