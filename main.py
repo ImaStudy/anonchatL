@@ -9,9 +9,9 @@ logging.basicConfig(level=logging.INFO)
 
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 
-bot.remove_webhook()
-
 bot = telebot.TeleBot(TOKEN)
+
+bot.remove_webhook()
 app = Flask(__name__)
 
 # === Глобальные переменные ===
