@@ -180,6 +180,7 @@ def handle_chat(message):
 # === Запуск ===
 def start_bot():
     logging.info("Запуск бота с polling")
+    logging.info("Polling запущен")
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
