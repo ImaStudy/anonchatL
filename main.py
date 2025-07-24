@@ -12,7 +12,7 @@ TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
 
 bot = telebot.TeleBot(TOKEN)
 
-bot.remove_webhook()
+# === здесь убрал ===
 app = Flask(__name__)
 
 # === Глобальные переменные ===
@@ -192,16 +192,16 @@ def handle_chat(message):
 
 # === Запуск бота с обработкой ошибок и пингом Telegram ===
 def start_bot():
-    logging.info("Запуск бота с polling")
-    bot.remove_webhook()
+    logging.info("Старт polling Telegram")
     while True:
         try:
+            bot.remove_webhook()
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
         except requests.exceptions.ConnectionError as e:
             logging.warning(f"ConnectionError: {e}. Повтор через 10 секунд...")
             time.sleep(10)
         except Exception as e:
-            logging.error(f"Другая ошибка polling: {e}", exc_info=True)
+            logging.error(f"Ошибка polling: {e}", exc_info=True)
             time.sleep(10)
 
 if __name__ == '__main__':
