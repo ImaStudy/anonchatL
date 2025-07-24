@@ -6,6 +6,9 @@ import time
 import logging
 import requests
 import socket
+from multiprocessing import Process 
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logging.basicConfig(level=logging.INFO)
 
