@@ -37,17 +37,18 @@ def run_flask():
 
 # === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
-    session = requests.Session()
-    retry = Retry(total=3, backoff_factor=1)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('https://', adapter)
-
     while True:
+        session = requests.Session()
+        retry = Retry(total=3, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('https://', adapter)
         try:
             session.get(f"https://api.telegram.org/bot{TOKEN}/getMe", timeout=10)
             logging.debug("Пинг Telegram прошёл")
         except Exception as e:
             logging.warning(f"Ошибка пинга: {e}")
+        finally:
+            session.close()
         time.sleep(60)
 
 
@@ -204,7 +205,7 @@ def start_bot():
     bot.remove_webhook()
     while True:
         try:
-            bot.infinity_polling(timeout=90, long_polling_timeout=60, restart_on_change=True)
+           bot.infinity_polling(timeout=90, long_polling_timeout=60)
         except Exception as e:
             logging.error(f"Ошибка polling: {e}", exc_info=True)
             time.sleep(10)
