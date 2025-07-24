@@ -35,8 +35,10 @@ def run_flask():
 def keep_alive_ping():
     while True:
         try:
-            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe")
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe", timeout=10)
             logging.debug("Пинг Telegram прошел успешно")
+        except requests.exceptions.ConnectionError as e:
+            logging.warning(f"ConnectionError при пинге Telegram: {e}")
         except Exception as e:
             logging.warning(f"Пинг Telegram не удался: {e}")
         time.sleep(120)  # Пинг каждые 2 минуты
