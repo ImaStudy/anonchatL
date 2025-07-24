@@ -197,8 +197,11 @@ def start_bot():
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
+        except requests.exceptions.ConnectionError as e:
+            logging.warning(f"ConnectionError: {e}. Повтор через 10 секунд...")
+            time.sleep(10)
         except Exception as e:
-            logging.error(f"Polling error: {e}", exc_info=True)
+            logging.error(f"Другая ошибка polling: {e}", exc_info=True)
             time.sleep(10)
 
 if __name__ == '__main__':
