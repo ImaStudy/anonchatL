@@ -5,6 +5,7 @@ from telebot import types
 import time
 import logging
 import requests
+import socket
 
 logging.basicConfig(level=logging.INFO)
 
@@ -198,13 +199,13 @@ def start_bot():
     bot.remove_webhook()
     while True:
         try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=30)
+            bot.infinity_polling(timeout=60, long_polling_timeout=30, allowed_updates=[])
         except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
             logging.warning(f"Сетевое соединение прервано: {e}. Повтор через 10 секунд...")
             time.sleep(10)
         except Exception as e:
             logging.error(f"Другая ошибка polling: {e}", exc_info=True)
-            time.sleep(300)
+            time.sleep(10)
 
 if __name__ == '__main__':
     flask_thread = Thread(target=run_flask)
