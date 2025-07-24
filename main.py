@@ -35,13 +35,15 @@ def run_flask():
 def keep_alive_ping():
     while True:
         try:
-            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe", timeout=10)
-            logging.debug("Пинг Telegram прошел успешно")
-        except requests.exceptions.ConnectionError as e:
-            logging.warning(f"ConnectionError при пинге Telegram: {e}")
+            headers = {"User-Agent": "Mozilla/5.0"}
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe", headers=headers, timeout=10)
+            logging.debug("Пинг Telegram прошёл")
+        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
+            logging.warning(f"Сетевое соединение прервано: {e}. Пропускаем...")
         except Exception as e:
-            logging.warning(f"Пинг Telegram не удался: {e}")
-        time.sleep(120)  # Пинг каждые 2 минуты
+            logging.warning(f"Другая ошибка в keep_alive_ping: {e}")
+        time.sleep(300)
+
 
 # === Бот-обработчики ===
 @bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
@@ -192,17 +194,17 @@ def handle_chat(message):
 
 # === Запуск бота с обработкой ошибок и пингом Telegram ===
 def start_bot():
-    logging.info("Старт polling Telegram")
+    logging.info("Запуск бота с polling")
+    bot.remove_webhook()
     while True:
         try:
-            bot.remove_webhook()
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
-        except requests.exceptions.ConnectionError as e:
-            logging.warning(f"ConnectionError: {e}. Повтор через 10 секунд...")
+        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
+            logging.warning(f"Сетевое соединение прервано: {e}. Повтор через 10 секунд...")
             time.sleep(10)
         except Exception as e:
-            logging.error(f"Ошибка polling: {e}", exc_info=True)
-            time.sleep(10)
+            logging.error(f"Другая ошибка polling: {e}", exc_info=True)
+            time.sleep(300)
 
 if __name__ == '__main__':
     flask_thread = Thread(target=run_flask)
