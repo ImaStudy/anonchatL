@@ -43,7 +43,7 @@ def keep_alive_ping():
             logging.warning(f"Сетевое соединение прервано: {e}. Пропускаем...")
         except Exception as e:
             logging.warning(f"Другая ошибка в keep_alive_ping: {e}")
-        time.sleep(300)
+        time.sleep(120)
 
 
 # === Бот-обработчики ===
@@ -199,7 +199,7 @@ def start_bot():
     bot.remove_webhook()
     while True:
         try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=30, allowed_updates=[])
+            bot.infinity_polling(timeout=90, long_polling_timeout=60, allowed_updates=[])
         except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
             logging.warning(f"Сетевое соединение прервано: {e}. Повтор через 10 секунд...")
             time.sleep(10)
