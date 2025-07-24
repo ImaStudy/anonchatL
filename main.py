@@ -4,6 +4,7 @@ import telebot
 from telebot import types
 import time
 import logging
+import requests
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,6 +30,16 @@ def index():
 
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
+
+# === Функция пинга Telegram, чтобы Render не засыпал ===
+def keep_alive_ping():
+    while True:
+        try:
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe")
+            logging.debug("Пинг Telegram прошел успешно")
+        except Exception as e:
+            logging.warning(f"Пинг Telegram не удался: {e}")
+        time.sleep(120)  # Пинг каждые 2 минуты
 
 # === Бот-обработчики ===
 @bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
@@ -177,12 +188,10 @@ def handle_chat(message):
     elif chat_id not in shown_welcome:
         send_welcome(message)
 
-# === Запуск ===
+# === Запуск бота с обработкой ошибок и пингом Telegram ===
 def start_bot():
-    print("Polling запускается!")   # вывод в консоль
     logging.info("Запуск бота с polling")
-    logging.info("Polling запущен")
-    bot.remove_webhook()  # можно перестраховаться и тут, перед polling
+    bot.remove_webhook()
     while True:
         try:
             bot.infinity_polling(timeout=60, long_polling_timeout=30)
@@ -193,6 +202,9 @@ def start_bot():
 if __name__ == '__main__':
     flask_thread = Thread(target=run_flask)
     flask_thread.start()
+
+    ping_thread = Thread(target=keep_alive_ping)
+    ping_thread.start()
 
     polling_thread = Thread(target=start_bot)
     polling_thread.start()
