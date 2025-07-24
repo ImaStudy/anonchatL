@@ -38,18 +38,19 @@ def run_flask():
 # === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
     while True:
-        session = requests.Session()
-        retry = Retry(total=3, backoff_factor=1)
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount('https://', adapter)
         try:
-            session.get(f"https://api.telegram.org/bot{TOKEN}/getMe", timeout=10)
-            logging.debug("Пинг Telegram прошёл")
+            response = requests.get(
+                f"https://api.telegram.org/bot{TOKEN}/getMe",
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                logging.debug("✅ Успешный ping Telegram")
+            else:
+                logging.warning(f"⚠️ Ping неудачен: {response.status_code}")
         except Exception as e:
-            logging.warning(f"Ошибка пинга: {e}")
-        finally:
-            session.close()
-        time.sleep(60)
+            logging.warning(f"❗ Ошибка ping Telegram: {e}")
+        time.sleep(180)
 
 
 # === Бот-обработчики ===
@@ -205,12 +206,15 @@ def start_bot():
     bot.remove_webhook()
     while True:
         try:
-           bot.infinity_polling(timeout=90, long_polling_timeout=60)
+            bot.infinity_polling(timeout=90, long_polling_timeout=60)
+        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
+            logging.warning(f"🔁 Потеря соединения: {e}. Повтор через 15 секунд...")
+            time.sleep(15)
         except Exception as e:
-            logging.error(f"Ошибка polling: {e}", exc_info=True)
-            time.sleep(10)
+            logging.error(f"❌ Другая ошибка polling: {e}", exc_info=True)
+            time.sleep(15)
 
 if __name__ == '__main__':
-    Process(target=run_flask).start()  # Заменяем Thread на Process
-    Process(target=keep_alive_ping).start()
-    start_bot()  # Запускаем бота в основном потоке
+    Thread(target=run_flask).start()
+    Thread(target=keep_alive_ping).start()
+    start_bot()
