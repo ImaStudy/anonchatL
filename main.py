@@ -34,16 +34,18 @@ def run_flask():
 
 # === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=1)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('https://', adapter)
+
     while True:
         try:
-            headers = {"User-Agent": "Mozilla/5.0"}
-            requests.get(f"https://api.telegram.org/bot{TOKEN}/getMe", headers=headers, timeout=10)
+            session.get(f"https://api.telegram.org/bot{TOKEN}/getMe", timeout=10)
             logging.debug("Пинг Telegram прошёл")
-        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
-            logging.warning(f"Сетевое соединение прервано: {e}. Пропускаем...")
         except Exception as e:
-            logging.warning(f"Другая ошибка в keep_alive_ping: {e}")
-        time.sleep(120)
+            logging.warning(f"Ошибка пинга: {e}")
+        time.sleep(60)
 
 
 # === Бот-обработчики ===
@@ -199,20 +201,12 @@ def start_bot():
     bot.remove_webhook()
     while True:
         try:
-            bot.infinity_polling(timeout=90, long_polling_timeout=60, allowed_updates=[])
-        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
-            logging.warning(f"Сетевое соединение прервано: {e}. Повтор через 10 секунд...")
-            time.sleep(10)
+            bot.infinity_polling(timeout=90, long_polling_timeout=60, restart_on_change=True)
         except Exception as e:
-            logging.error(f"Другая ошибка polling: {e}", exc_info=True)
+            logging.error(f"Ошибка polling: {e}", exc_info=True)
             time.sleep(10)
 
 if __name__ == '__main__':
-    flask_thread = Thread(target=run_flask)
-    flask_thread.start()
-
-    ping_thread = Thread(target=keep_alive_ping)
-    ping_thread.start()
-
-    polling_thread = Thread(target=start_bot)
-    polling_thread.start()
+    Process(target=run_flask).start()  # Заменяем Thread на Process
+    Process(target=keep_alive_ping).start()
+    start_bot()  # Запускаем бота в основном потоке
