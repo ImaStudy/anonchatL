@@ -64,7 +64,7 @@ def keep_alive_ping():
             logging.warning(f"❗ Ошибка соединения с Telegram: {type(e).__name__}: {e}")
         except Exception as e:
             logging.warning(f"❗ Другая ошибка в ping: {type(e).__name__}: {e}")
-        time.sleep(180)
+        time.sleep(90)
 
 
 # === Бот-обработчики ===
