@@ -39,11 +39,18 @@ def run_flask():
 def keep_alive_ping():
     while True:
         try:
-            logging.info("🌐 Пингуем свой Render-сайт")
-            response = requests.get("https://anonchatbot-jbh9.onrender.com", timeout=5)
+            logging.info("🌐 Пингуем Render")
+            response = requests.get(
+                "https://anonchatbot-jbh9.onrender.com",
+                timeout=5,
+                headers={
+                    "User-Agent": "keep-alive-checker/1.0",
+                    "Connection": "close"
+                }
+            )
             logging.info(f"✅ Ответ сайта: {response.status_code}")
         except Exception as e:
-            logging.warning(f"❌ Ошибка пинга сайта: {type(e).__name__}: {e}")
+            logging.warning(f"❌ Ошибка пинга: {type(e).__name__}: {e}")
         time.sleep(180)
 
 
