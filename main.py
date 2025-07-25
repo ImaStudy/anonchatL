@@ -37,19 +37,33 @@ def run_flask():
 
 # === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
+    session = requests.Session()
+    retries = Retry(
+        total=3,
+        backoff_factor=2,
+        status_forcelist=[500, 502, 503, 504],
+        raise_on_status=False
+    )
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
     while True:
         try:
-            response = requests.get(
+            logging.info("📡 Пингуем Telegram...")
+            response = session.get(
                 f"https://api.telegram.org/bot{TOKEN}/getMe",
                 headers={"User-Agent": "Mozilla/5.0"},
                 timeout=10
             )
             if response.status_code == 200:
-                logging.debug("✅ Успешный ping Telegram")
+                logging.info("✅ Успешный ping Telegram")
             else:
                 logging.warning(f"⚠️ Ping неудачен: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"❗ Ошибка соединения с Telegram: {type(e).__name__}: {e}")
         except Exception as e:
-            logging.warning(f"❗ Ошибка ping Telegram: {e}")
+            logging.warning(f"❗ Другая ошибка в ping: {type(e).__name__}: {e}")
         time.sleep(180)
 
 
@@ -188,7 +202,62 @@ def end_chat(chat_id, notify=False):
             bot.send_message(chat_id, "🚫 Вы покинули очередь")
             send_search_button(chat_id)
 
-@bot.message_handler(func=lambda m: True)
+# === Пересылка фото ===
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    chat_id = message.chat.id
+    partner_id = active_chats.get(chat_id)
+    if partner_id:
+        try:
+            # Берём фото с максимальным разрешением
+            file_id = message.photo[-1].file_id
+            bot.send_photo(partner_id, file_id, caption=message.caption or "")
+        except:
+            bot.send_message(chat_id, "❌ Не удалось доставить фото")
+    else:
+        bot.send_message(chat_id, "Нет активного собеседника")
+
+# === Пересылка видео ===
+@bot.message_handler(content_types=['video'])
+def handle_video(message):
+    chat_id = message.chat.id
+    partner_id = active_chats.get(chat_id)
+    if partner_id:
+        try:
+            bot.send_video(partner_id, message.video.file_id, caption=message.caption or "")
+        except:
+            bot.send_message(chat_id, "❌ Не удалось доставить видео")
+    else:
+        bot.send_message(chat_id, "Нет активного собеседника")
+
+# === Пересылка кружков (video note) ===
+@bot.message_handler(content_types=['video_note'])
+def handle_video_note(message):
+    chat_id = message.chat.id
+    partner_id = active_chats.get(chat_id)
+    if partner_id:
+        try:
+            bot.send_video_note(partner_id, message.video_note.file_id)
+        except:
+            bot.send_message(chat_id, "❌ Не удалось доставить кружок")
+    else:
+        bot.send_message(chat_id, "Нет активного собеседника")
+
+# === Пересылка документов (если нужно) ===
+@bot.message_handler(content_types=['document'])
+def handle_document(message):
+    chat_id = message.chat.id
+    partner_id = active_chats.get(chat_id)
+    if partner_id:
+        try:
+            bot.send_document(partner_id, message.document.file_id, caption=message.caption or "")
+        except:
+            bot.send_message(chat_id, "❌ Не удалось доставить файл")
+    else:
+        bot.send_message(chat_id, "Нет активного собеседника")
+
+# === Обычные текстовые сообщения ===
+@bot.message_handler(func=lambda m: m.content_type == 'text')
 def handle_chat(message):
     chat_id = message.chat.id
     partner_id = active_chats.get(chat_id)
@@ -199,6 +268,7 @@ def handle_chat(message):
             bot.send_message(chat_id, "❌ Не удалось доставить сообщение")
     elif chat_id not in shown_welcome:
         send_welcome(message)
+
 
 # === Запуск бота с обработкой ошибок и пингом Telegram ===
 def start_bot():
