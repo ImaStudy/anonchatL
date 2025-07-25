@@ -37,34 +37,14 @@ def run_flask():
 
 # === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
-    session = requests.Session()
-    retries = Retry(
-        total=3,
-        backoff_factor=2,
-        status_forcelist=[500, 502, 503, 504],
-        raise_on_status=False
-    )
-    adapter = HTTPAdapter(max_retries=retries)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-
     while True:
         try:
-            logging.info("📡 Пингуем Telegram...")
-            response = session.get(
-                f"https://api.telegram.org/bot{TOKEN}/getMe",
-                headers={"User-Agent": "Mozilla/5.0"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                logging.info("✅ Успешный ping Telegram")
-            else:
-                logging.warning(f"⚠️ Ping неудачен: {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            logging.warning(f"❗ Ошибка соединения с Telegram: {type(e).__name__}: {e}")
+            logging.info("🌐 Пингуем свой Render-сайт")
+            response = requests.get("https://anonchatbot-jbh9.onrender.com", timeout=5)
+            logging.info(f"✅ Ответ сайта: {response.status_code}")
         except Exception as e:
-            logging.warning(f"❗ Другая ошибка в ping: {type(e).__name__}: {e}")
-        time.sleep(90)
+            logging.warning(f"❌ Ошибка пинга сайта: {type(e).__name__}: {e}")
+        time.sleep(180)
 
 
 # === Бот-обработчики ===
