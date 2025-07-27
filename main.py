@@ -55,11 +55,11 @@ def handle_start(message):
         send_search_button(chat_id)
         return
 
-    bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖")
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("Парень"), types.KeyboardButton("Девушка"))
-    bot.send_message(chat_id, "Выбери свой пол:", reply_markup=markup)
-    
+    msg = bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖\nВыбери свой пол:", reply_markup=markup)
+    bot.register_next_step_handler(msg, handle_gender)
+
 @bot.callback_query_handler(func=lambda call: call.data == "start")
 def handle_inline_start(call):
     chat_id = call.message.chat.id
@@ -93,14 +93,18 @@ def handle_entry_point(msg):
     shown_welcome.add(chat_id)  # Добавляем сюда, чтобы не слать повторно
 
 
-@bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
-@threaded
 def handle_gender(message):
     chat_id = message.chat.id
+    if message.text not in ["Парень", "Девушка"]:
+        msg = bot.send_message(chat_id, "Пожалуйста, выбери пол из кнопок.")
+        bot.register_next_step_handler(msg, handle_gender)
+        return
+
     user_gender[chat_id] = message.text
     bot.send_message(chat_id, f"Пол установлен: {message.text}", reply_markup=types.ReplyKeyboardRemove())
-    bot.send_message(chat_id, "Теперь введи свой возраст (от 18 до 99):")
-    bot.register_next_step_handler(message, handle_age)
+
+    msg = bot.send_message(chat_id, "Теперь введи свой возраст (от 18 до 99):")
+    bot.register_next_step_handler(msg, handle_age)
 
 def handle_age(message):
     chat_id = message.chat.id
@@ -111,11 +115,11 @@ def handle_age(message):
             bot.send_message(chat_id, f"Возраст установлен: {age}", reply_markup=types.ReplyKeyboardRemove())
             send_search_button(chat_id)
         else:
-            bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
-            bot.register_next_step_handler(message, handle_age)
+            msg = bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
+            bot.register_next_step_handler(msg, handle_age)
     except ValueError:
-        bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
-        bot.register_next_step_handler(message, handle_age)
+        msg = bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
+        bot.register_next_step_handler(msg, handle_age)
 
 def send_search_button(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
