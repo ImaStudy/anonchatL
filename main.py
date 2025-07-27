@@ -47,6 +47,25 @@ def threaded(fn):
     return wrapper
 
 # === Хендлеры ===
+@bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
+@threaded
+def send_welcome(msg):
+    shown_welcome.add(msg.chat.id)
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
+    bot.send_message(msg.chat.id, "Привет! Нажми кнопку \"Начать\", чтобы запустить анонимный чат.", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "start")
+def handle_inline_start(call):
+    threading.Thread(target=_handle_inline_start, args=(call,)).start()
+
+def _handle_inline_start(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+    bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
+    bot.clear_step_handler_by_chat_id(chat_id)
+    handle_start(call.message)
+
 @bot.message_handler(commands=['start'])
 @threaded
 def handle_start(message):
@@ -55,56 +74,19 @@ def handle_start(message):
         send_search_button(chat_id)
         return
 
+    bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖")
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("Парень"), types.KeyboardButton("Девушка"))
-    msg = bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖\nВыбери свой пол:", reply_markup=markup)
-    bot.register_next_step_handler(msg, handle_gender)
+    bot.send_message(chat_id, "Выбери свой пол:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data == "start")
-def handle_inline_start(call):
-    chat_id = call.message.chat.id
-    message_id = call.message.message_id
-    bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
-    bot.clear_step_handler_by_chat_id(chat_id)
-    shown_welcome.add(chat_id)  # Ещё раз на всякий случай
-    handle_start(call.message)
-
-@bot.message_handler(func=lambda msg: True)
-def handle_entry_point(msg):
-    chat_id = msg.chat.id
-    text = msg.text.lower() if msg.text else ""
-
-    # Если пользователь уже зарегистрирован (и возраст и пол есть), ничего не делаем
-    if chat_id in user_gender and chat_id in user_age:
-        return
-
-    # Если пользователь уже видел приветствие и кнопку "Начать" — не слать снова
-    if chat_id in shown_welcome:
-        return
-
-    # Если пришла команда, которая уже обрабатывается отдельно, пропускаем
-    if text in ["/search", "🔍 найти собеседника", "⏹ остановить поиск", "/stop", "/next"]:
-        return
-
-    # Отправляем приветствие новым пользователям
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
-    bot.send_message(chat_id, "Привет! Нажми кнопку «Начать», чтобы запустить анонимный чат.", reply_markup=markup)
-    shown_welcome.add(chat_id)  # Добавляем сюда, чтобы не слать повторно
-
-
+@bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
+@threaded
 def handle_gender(message):
     chat_id = message.chat.id
-    if message.text not in ["Парень", "Девушка"]:
-        msg = bot.send_message(chat_id, "Пожалуйста, выбери пол из кнопок.")
-        bot.register_next_step_handler(msg, handle_gender)
-        return
-
     user_gender[chat_id] = message.text
     bot.send_message(chat_id, f"Пол установлен: {message.text}", reply_markup=types.ReplyKeyboardRemove())
-
-    msg = bot.send_message(chat_id, "Теперь введи свой возраст (от 18 до 99):")
-    bot.register_next_step_handler(msg, handle_age)
+    bot.send_message(chat_id, "Теперь введи свой возраст (от 18 до 99):")
+    bot.register_next_step_handler(message, handle_age)
 
 def handle_age(message):
     chat_id = message.chat.id
@@ -113,14 +95,13 @@ def handle_age(message):
         if 18 <= age <= 99:
             user_age[chat_id] = age
             bot.send_message(chat_id, f"Возраст установлен: {age}", reply_markup=types.ReplyKeyboardRemove())
-            send_search_button(chat_id)  # вызов показа кнопки поиска
+            send_search_button(chat_id)
         else:
-            msg = bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
-            bot.register_next_step_handler(msg, handle_age)
+            bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
+            bot.register_next_step_handler(message, handle_age)
     except ValueError:
-        msg = bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
-        bot.register_next_step_handler(msg, handle_age)
-
+        bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
+        bot.register_next_step_handler(message, handle_age)
 
 def send_search_button(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -133,7 +114,6 @@ def send_search_button(chat_id):
     else:
         markup.add(types.KeyboardButton("🔍 Найти собеседника"))
         bot.send_message(chat_id, "Нажми кнопку \"🔍 Найти собеседника\", чтобы начать поиск.", reply_markup=markup)
-
 
 @bot.message_handler(commands=['settings'])
 @threaded
@@ -212,6 +192,7 @@ def end_chat(chat_id, notify=False):
             bot.send_message(chat_id, "🚫 Вы покинули очередь")
             send_search_button(chat_id)
 
+# === Медиа пересылка ===
 @bot.message_handler(content_types=['photo'])
 @threaded
 def handle_photo(message):
@@ -271,6 +252,8 @@ def handle_chat(message):
             bot.send_message(partner_id, message.text)
         except:
             bot.send_message(chat_id, "❌ Не удалось доставить сообщение")
+    elif chat_id not in shown_welcome:
+        send_welcome(message)
 
 # === Запуск ===
 def start_bot():
