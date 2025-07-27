@@ -1,22 +1,17 @@
 from flask import Flask
 from threading import Thread
+import threading
 import telebot
 from telebot import types
 import time
 import logging
 import requests
-import socket
-from multiprocessing import Process 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = "7694567532:AAF2ith3388eqkIwrfyCRLmzm7icLZsXDM0"
-
 bot = telebot.TeleBot(TOKEN)
 
-# === здесь убрал ===
 app = Flask(__name__)
 
 # === Глобальные переменные ===
@@ -35,27 +30,25 @@ def index():
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-# === Функция пинга Telegram, чтобы Render не засыпал ===
 def keep_alive_ping():
     while True:
         try:
             logging.info("🌐 Локальный пинг Flask-сервера")
-            response = requests.get(
-                "http://127.0.0.1:8080",  # Локальный адрес вместо внешнего
-                timeout=5,
-                headers={
-                    "User-Agent": "keep-alive-checker/1.0",
-                    "Connection": "close"
-                }
-            )
+            response = requests.get("http://127.0.0.1:8080", timeout=5)
             logging.info(f"✅ Ответ сервера: {response.status_code}")
         except Exception as e:
             logging.warning(f"❌ Ошибка пинга: {type(e).__name__}: {e}")
         time.sleep(180)
 
+# === Декоратор для запуска хендлера в отдельном потоке ===
+def threaded(fn):
+    def wrapper(message):
+        threading.Thread(target=fn, args=(message,)).start()
+    return wrapper
 
-# === Бот-обработчики ===
+# === Хендлеры ===
 @bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
+@threaded
 def send_welcome(msg):
     shown_welcome.add(msg.chat.id)
     markup = types.InlineKeyboardMarkup()
@@ -64,6 +57,9 @@ def send_welcome(msg):
 
 @bot.callback_query_handler(func=lambda call: call.data == "start")
 def handle_inline_start(call):
+    threading.Thread(target=_handle_inline_start, args=(call,)).start()
+
+def _handle_inline_start(call):
     chat_id = call.message.chat.id
     message_id = call.message.message_id
     bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
@@ -71,6 +67,7 @@ def handle_inline_start(call):
     handle_start(call.message)
 
 @bot.message_handler(commands=['start'])
+@threaded
 def handle_start(message):
     chat_id = message.chat.id
     if chat_id in user_gender and chat_id in user_age:
@@ -83,6 +80,7 @@ def handle_start(message):
     bot.send_message(chat_id, "Выбери свой пол:", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
+@threaded
 def handle_gender(message):
     chat_id = message.chat.id
     user_gender[chat_id] = message.text
@@ -118,6 +116,7 @@ def send_search_button(chat_id):
         bot.send_message(chat_id, "Нажми кнопку \"🔍 Найти собеседника\", чтобы начать поиск.", reply_markup=markup)
 
 @bot.message_handler(commands=['settings'])
+@threaded
 def change_settings(message):
     chat_id = message.chat.id
     waiting_for_gender_change.add(chat_id)
@@ -127,6 +126,7 @@ def change_settings(message):
 
 @bot.message_handler(func=lambda m: m.text == "🔍 Найти собеседника")
 @bot.message_handler(commands=['search'])
+@threaded
 def handle_search(message):
     chat_id = message.chat.id
     if chat_id in active_chats:
@@ -151,6 +151,7 @@ def handle_search(message):
     users_waiting.append(chat_id)
 
 @bot.message_handler(func=lambda m: m.text == "⏹ Остановить поиск")
+@threaded
 def stop_search(message):
     chat_id = message.chat.id
     if chat_id in users_waiting:
@@ -162,10 +163,12 @@ def stop_search(message):
         send_search_button(chat_id)
 
 @bot.message_handler(commands=['stop'])
+@threaded
 def stop_chat(message):
     end_chat(message.chat.id, notify=True)
 
 @bot.message_handler(commands=['next'])
+@threaded
 def next_chat(message):
     chat_id = message.chat.id
     if chat_id in users_waiting:
@@ -189,62 +192,58 @@ def end_chat(chat_id, notify=False):
             bot.send_message(chat_id, "🚫 Вы покинули очередь")
             send_search_button(chat_id)
 
-# === Пересылка фото ===
+# === Медиа пересылка ===
 @bot.message_handler(content_types=['photo'])
+@threaded
 def handle_photo(message):
-    chat_id = message.chat.id
-    partner_id = active_chats.get(chat_id)
+    partner_id = active_chats.get(message.chat.id)
     if partner_id:
         try:
-            # Берём фото с максимальным разрешением
             file_id = message.photo[-1].file_id
             bot.send_photo(partner_id, file_id, caption=message.caption or "")
         except:
-            bot.send_message(chat_id, "❌ Не удалось доставить фото")
+            bot.send_message(message.chat.id, "❌ Не удалось доставить фото")
     else:
-        bot.send_message(chat_id, "Нет активного собеседника")
+        bot.send_message(message.chat.id, "Нет активного собеседника")
 
-# === Пересылка видео ===
 @bot.message_handler(content_types=['video'])
+@threaded
 def handle_video(message):
-    chat_id = message.chat.id
-    partner_id = active_chats.get(chat_id)
+    partner_id = active_chats.get(message.chat.id)
     if partner_id:
         try:
             bot.send_video(partner_id, message.video.file_id, caption=message.caption or "")
         except:
-            bot.send_message(chat_id, "❌ Не удалось доставить видео")
+            bot.send_message(message.chat.id, "❌ Не удалось доставить видео")
     else:
-        bot.send_message(chat_id, "Нет активного собеседника")
+        bot.send_message(message.chat.id, "Нет активного собеседника")
 
-# === Пересылка кружков (video note) ===
 @bot.message_handler(content_types=['video_note'])
+@threaded
 def handle_video_note(message):
-    chat_id = message.chat.id
-    partner_id = active_chats.get(chat_id)
+    partner_id = active_chats.get(message.chat.id)
     if partner_id:
         try:
             bot.send_video_note(partner_id, message.video_note.file_id)
         except:
-            bot.send_message(chat_id, "❌ Не удалось доставить кружок")
+            bot.send_message(message.chat.id, "❌ Не удалось доставить кружок")
     else:
-        bot.send_message(chat_id, "Нет активного собеседника")
+        bot.send_message(message.chat.id, "Нет активного собеседника")
 
-# === Пересылка документов (если нужно) ===
 @bot.message_handler(content_types=['document'])
+@threaded
 def handle_document(message):
-    chat_id = message.chat.id
-    partner_id = active_chats.get(chat_id)
+    partner_id = active_chats.get(message.chat.id)
     if partner_id:
         try:
             bot.send_document(partner_id, message.document.file_id, caption=message.caption or "")
         except:
-            bot.send_message(chat_id, "❌ Не удалось доставить файл")
+            bot.send_message(message.chat.id, "❌ Не удалось доставить файл")
     else:
-        bot.send_message(chat_id, "Нет активного собеседника")
+        bot.send_message(message.chat.id, "Нет активного собеседника")
 
-# === Обычные текстовые сообщения ===
 @bot.message_handler(func=lambda m: m.content_type == 'text')
+@threaded
 def handle_chat(message):
     chat_id = message.chat.id
     partner_id = active_chats.get(chat_id)
@@ -256,8 +255,7 @@ def handle_chat(message):
     elif chat_id not in shown_welcome:
         send_welcome(message)
 
-
-# === Запуск бота с обработкой ошибок и пингом Telegram ===
+# === Запуск ===
 def start_bot():
     logging.info("Запуск бота с polling")
     bot.remove_webhook()
