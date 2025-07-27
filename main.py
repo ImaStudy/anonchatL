@@ -47,13 +47,21 @@ def threaded(fn):
     return wrapper
 
 # === Хендлеры ===
-@bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
-@threaded
-def send_welcome(msg):
-    shown_welcome.add(msg.chat.id)
+@bot.message_handler(func=lambda msg: True)
+def handle_message(msg):
+    chat_id = msg.chat.id
+    text = msg.text.lower() if msg.text else ""
+
+    # Если пользователь уже в процессе — не приветствуем
+    if chat_id in user_gender or chat_id in user_age or text in [
+        "/search", "🔍 найти собеседника", "⏹ остановить поиск", "/stop", "/next"
+    ]:
+        return  # Здесь можно сразу вызвать нужную функцию, если хочешь
+
+    # Приветствие для новых пользователей
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
-    bot.send_message(msg.chat.id, "Привет! Нажми кнопку \"Начать\", чтобы запустить анонимный чат.", reply_markup=markup)
+    bot.send_message(chat_id, "Привет! Нажми кнопку «Начать», чтобы запустить анонимный чат.", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data == "start")
 def handle_inline_start(call):
