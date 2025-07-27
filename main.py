@@ -59,16 +59,14 @@ def handle_start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("Парень"), types.KeyboardButton("Девушка"))
     bot.send_message(chat_id, "Выбери свой пол:", reply_markup=markup)
-
+    
 @bot.callback_query_handler(func=lambda call: call.data == "start")
 def handle_inline_start(call):
-    threading.Thread(target=_handle_inline_start, args=(call,)).start()
-
-def _handle_inline_start(call):
     chat_id = call.message.chat.id
     message_id = call.message.message_id
     bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
     bot.clear_step_handler_by_chat_id(chat_id)
+    shown_welcome.add(chat_id)  # Ещё раз на всякий случай
     handle_start(call.message)
 
 @bot.message_handler(func=lambda msg: True)
@@ -80,6 +78,10 @@ def handle_entry_point(msg):
     if chat_id in user_gender and chat_id in user_age:
         return
 
+    # Если пользователь уже видел приветствие и кнопку "Начать" — не слать снова
+    if chat_id in shown_welcome:
+        return
+
     # Если пришла команда, которая уже обрабатывается отдельно, пропускаем
     if text in ["/search", "🔍 найти собеседника", "⏹ остановить поиск", "/stop", "/next"]:
         return
@@ -88,6 +90,7 @@ def handle_entry_point(msg):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
     bot.send_message(chat_id, "Привет! Нажми кнопку «Начать», чтобы запустить анонимный чат.", reply_markup=markup)
+    shown_welcome.add(chat_id)  # Добавляем сюда, чтобы не слать повторно
 
 
 @bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
