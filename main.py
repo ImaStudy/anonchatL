@@ -112,10 +112,8 @@ def handle_age(message):
         age = int(message.text)
         if 18 <= age <= 99:
             user_age[chat_id] = age
-            # Убираем клавиатуру и сразу отправляем кнопку поиска
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            markup.add(types.KeyboardButton("🔍 Найти собеседника"))
-            bot.send_message(chat_id, f"Возраст установлен: {age}\n\nНажми кнопку ниже, чтобы найти собеседника.", reply_markup=markup)
+            bot.send_message(chat_id, f"Возраст установлен: {age}", reply_markup=types.ReplyKeyboardRemove())
+            send_search_button(chat_id)  # вызов показа кнопки поиска
         else:
             msg = bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
             bot.register_next_step_handler(msg, handle_age)
@@ -135,6 +133,7 @@ def send_search_button(chat_id):
     else:
         markup.add(types.KeyboardButton("🔍 Найти собеседника"))
         bot.send_message(chat_id, "Нажми кнопку \"🔍 Найти собеседника\", чтобы начать поиск.", reply_markup=markup)
+
 
 @bot.message_handler(commands=['settings'])
 @threaded
