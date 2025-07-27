@@ -76,15 +76,19 @@ def handle_entry_point(msg):
     chat_id = msg.chat.id
     text = msg.text.lower() if msg.text else ""
 
+    # Если пользователь уже зарегистрирован (и возраст и пол есть), ничего не делаем
     if chat_id in user_gender and chat_id in user_age:
         return
 
+    # Если пришла команда, которая уже обрабатывается отдельно, пропускаем
     if text in ["/search", "🔍 найти собеседника", "⏹ остановить поиск", "/stop", "/next"]:
         return
 
+    # Отправляем приветствие новым пользователям
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
     bot.send_message(chat_id, "Привет! Нажми кнопку «Начать», чтобы запустить анонимный чат.", reply_markup=markup)
+
 
 @bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
 @threaded
