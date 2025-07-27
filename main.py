@@ -46,39 +46,21 @@ def threaded(fn):
         threading.Thread(target=fn, args=(message,)).start()
     return wrapper
 
-# === Хендлеры ===
-@bot.message_handler(func=lambda msg: msg.text and msg.chat.id not in shown_welcome)
-@threaded
-def send_welcome(msg):
-    shown_welcome.add(msg.chat.id)
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start"))
-    bot.send_message(msg.chat.id, "Привет! Нажми кнопку \"Начать\", чтобы запустить анонимный чат.", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data == "start")
-def handle_inline_start(call):
-    threading.Thread(target=_handle_inline_start, args=(call,)).start()
-
-def _handle_inline_start(call):
-    chat_id = call.message.chat.id
-    message_id = call.message.message_id
-    bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
-    bot.clear_step_handler_by_chat_id(chat_id)
-    handle_start(call.message)
-
+# === Обработчик команды /start ===
 @bot.message_handler(commands=['start'])
 @threaded
 def handle_start(message):
     chat_id = message.chat.id
     if chat_id in user_gender and chat_id in user_age:
+        bot.send_message(chat_id, "Вы уже зарегистрированы.")
         send_search_button(chat_id)
         return
 
-    bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖")
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("Парень"), types.KeyboardButton("Девушка"))
-    bot.send_message(chat_id, "Выбери свой пол:", reply_markup=markup)
+    bot.send_message(chat_id, "Привет! Это анонимный чат-бот 🤖\nВыбери свой пол:", reply_markup=markup)
 
+# === Обработчик выбора пола ===
 @bot.message_handler(func=lambda message: message.text in ["Парень", "Девушка"])
 @threaded
 def handle_gender(message):
@@ -88,6 +70,7 @@ def handle_gender(message):
     bot.send_message(chat_id, "Теперь введи свой возраст (от 18 до 99):")
     bot.register_next_step_handler(message, handle_age)
 
+# === Обработчик ввода возраста ===
 def handle_age(message):
     chat_id = message.chat.id
     try:
@@ -97,12 +80,13 @@ def handle_age(message):
             bot.send_message(chat_id, f"Возраст установлен: {age}", reply_markup=types.ReplyKeyboardRemove())
             send_search_button(chat_id)
         else:
-            bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
-            bot.register_next_step_handler(message, handle_age)
+            msg = bot.send_message(chat_id, "Возраст должен быть от 18 до 99. Попробуй снова:")
+            bot.register_next_step_handler(msg, handle_age)
     except ValueError:
-        bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
-        bot.register_next_step_handler(message, handle_age)
+        msg = bot.send_message(chat_id, "Пожалуйста, введи число. Попробуй снова:")
+        bot.register_next_step_handler(msg, handle_age)
 
+# === Функция показа кнопки поиска и статуса ===
 def send_search_button(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     if chat_id in active_chats:
@@ -115,20 +99,15 @@ def send_search_button(chat_id):
         markup.add(types.KeyboardButton("🔍 Найти собеседника"))
         bot.send_message(chat_id, "Нажми кнопку \"🔍 Найти собеседника\", чтобы начать поиск.", reply_markup=markup)
 
-@bot.message_handler(commands=['settings'])
-@threaded
-def change_settings(message):
-    chat_id = message.chat.id
-    waiting_for_gender_change.add(chat_id)
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add(types.KeyboardButton("Парень"), types.KeyboardButton("Девушка"))
-    bot.send_message(chat_id, "Выбери новый пол:", reply_markup=markup)
-
+# === Обработчик кнопки поиска собеседника ===
 @bot.message_handler(func=lambda m: m.text == "🔍 Найти собеседника")
 @bot.message_handler(commands=['search'])
 @threaded
 def handle_search(message):
     chat_id = message.chat.id
+    if chat_id not in user_gender or chat_id not in user_age:
+        bot.send_message(chat_id, "Сначала используй /start, чтобы зарегистрироваться.")
+        return
     if chat_id in active_chats:
         bot.send_message(chat_id, "Вы уже в чате.")
         return
@@ -150,6 +129,7 @@ def handle_search(message):
             return
     users_waiting.append(chat_id)
 
+# === Остановка поиска ===
 @bot.message_handler(func=lambda m: m.text == "⏹ Остановить поиск")
 @threaded
 def stop_search(message):
@@ -162,11 +142,13 @@ def stop_search(message):
         bot.send_message(chat_id, "Вы сейчас не ищете собеседника.")
         send_search_button(chat_id)
 
+# === Команда /stop для выхода из чата ===
 @bot.message_handler(commands=['stop'])
 @threaded
 def stop_chat(message):
     end_chat(message.chat.id, notify=True)
 
+# === Команда /next для смены собеседника ===
 @bot.message_handler(commands=['next'])
 @threaded
 def next_chat(message):
@@ -177,6 +159,7 @@ def next_chat(message):
     end_chat(chat_id, notify=True)
     handle_search(message)
 
+# === Завершение чата и очистка данных ===
 def end_chat(chat_id, notify=False):
     partner = active_chats.pop(chat_id, None)
     if partner:
@@ -192,7 +175,7 @@ def end_chat(chat_id, notify=False):
             bot.send_message(chat_id, "🚫 Вы покинули очередь")
             send_search_button(chat_id)
 
-# === Медиа пересылка ===
+# === Пересылка медиа (фото, видео, документы) ===
 @bot.message_handler(content_types=['photo'])
 @threaded
 def handle_photo(message):
@@ -242,6 +225,7 @@ def handle_document(message):
     else:
         bot.send_message(message.chat.id, "Нет активного собеседника")
 
+# === Пересылка текстовых сообщений между собеседниками ===
 @bot.message_handler(func=lambda m: m.content_type == 'text')
 @threaded
 def handle_chat(message):
@@ -252,8 +236,6 @@ def handle_chat(message):
             bot.send_message(partner_id, message.text)
         except:
             bot.send_message(chat_id, "❌ Не удалось доставить сообщение")
-    elif chat_id not in shown_welcome:
-        send_welcome(message)
 
 # === Запуск ===
 def start_bot():
